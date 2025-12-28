@@ -14,16 +14,23 @@ import { Album, LayoutDashboard, LogOut, User, ShieldCheck } from 'lucide-react'
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const userAvatar = PlaceHolderImages.find(p => p.id === 'user-avatar-1');
+const adminAvatar = PlaceHolderImages.find(p => p.id === 'admin-avatar-1');
 
 type HeaderProps = {
   role?: 'admin' | 'user';
 }
 
 export default function Header({ role = 'user' }: HeaderProps) {
+  const isUser = role === 'user';
+  const name = isUser ? 'Zaid' : 'Admin';
+  const email = isUser ? 'zaid@example.com' : 'admin@example.com';
+  const avatar = isUser ? userAvatar : adminAvatar;
+  const fallback = isUser ? 'ZA' : 'AD';
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card shadow-sm">
       <div className="container flex h-16 items-center px-4 md:px-6">
-        <Link href="/dashboard" className="mr-6 flex items-center gap-2">
+        <Link href={isUser ? "/dashboard" : "/admin"} className="mr-6 flex items-center gap-2">
           <Album className="h-6 w-6 text-primary" />
           <span className="font-bold text-lg font-headline">LabelFlow</span>
         </Link>
@@ -50,17 +57,17 @@ export default function Header({ role = 'user' }: HeaderProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
-                  {userAvatar && <AvatarImage src={userAvatar.imageUrl} alt="User Avatar" data-ai-hint={userAvatar.imageHint} />}
-                  <AvatarFallback>ZA</AvatarFallback>
+                  {avatar && <AvatarImage src={avatar.imageUrl} alt="User Avatar" data-ai-hint={avatar.imageHint} />}
+                  <AvatarFallback>{fallback}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">Zaid</p>
+                  <p className="text-sm font-medium leading-none">{name}</p>
                   <p className="text-xs leading-none text-muted-foreground">
-                    zaid@example.com
+                    {email}
                   </p>
                 </div>
               </DropdownMenuLabel>
