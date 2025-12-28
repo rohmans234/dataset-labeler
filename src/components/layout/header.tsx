@@ -15,7 +15,11 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const userAvatar = PlaceHolderImages.find(p => p.id === 'user-avatar-1');
 
-export default function Header() {
+type HeaderProps = {
+  role?: 'admin' | 'user';
+}
+
+export default function Header({ role = 'user' }: HeaderProps) {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card shadow-sm">
       <div className="container flex h-16 items-center px-4 md:px-6">
@@ -24,18 +28,22 @@ export default function Header() {
           <span className="font-bold text-lg font-headline">LabelFlow</span>
         </Link>
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-          <Link
-            href="/dashboard"
-            className="text-foreground/70 transition-colors hover:text-foreground"
-          >
-            Dashboard
-          </Link>
-          <Link
-            href="/admin"
-            className="text-foreground/70 transition-colors hover:text-foreground"
-          >
-            Admin
-          </Link>
+          {role === 'user' && (
+            <Link
+              href="/dashboard"
+              className="text-foreground/70 transition-colors hover:text-foreground"
+            >
+              Dashboard
+            </Link>
+          )}
+          {role === 'admin' && (
+            <Link
+              href="/admin"
+              className="text-foreground/70 transition-colors hover:text-foreground"
+            >
+              Admin
+            </Link>
+          )}
         </nav>
         <div className="ml-auto flex items-center gap-4">
           <DropdownMenu>
@@ -63,12 +71,14 @@ export default function Header() {
                   <span>Dashboard</span>
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                 <Link href="/admin">
-                  <ShieldCheck className="mr-2 h-4 w-4" />
-                  <span>Admin Panel</span>
-                 </Link>
-              </DropdownMenuItem>
+              {role === 'admin' && (
+                <DropdownMenuItem asChild>
+                   <Link href="/admin">
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    <span>Admin Panel</span>
+                   </Link>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link href="/login">

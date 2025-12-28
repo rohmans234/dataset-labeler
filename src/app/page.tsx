@@ -1,11 +1,10 @@
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Album } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LandingPage() {
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4 bg-background">
+    <div className="flex min-h-screen items-center justify-center p-4 bg-background">
       <div className="text-center space-y-8">
         <div className="flex justify-center items-center gap-4">
           <Album className="h-16 w-16 text-primary" />

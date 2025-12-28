@@ -13,7 +13,7 @@ import { Album } from 'lucide-react';
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
+    <div className="flex min-h-screen items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
             <div className='flex justify-center items-center gap-2 mb-4'>
@@ -43,6 +43,12 @@ export default function LoginPage() {
             <Button type="submit" className="w-full" asChild>
               <Link href="/dashboard">Login</Link>
             </Button>
+             <p className="text-center text-sm text-muted-foreground">
+              Login as admin?{' '}
+              <Link href="/admin" className="underline">
+                Click here
+              </Link>
+            </p>
           </form>
         </CardContent>
       </Card>
