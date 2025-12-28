@@ -9,7 +9,7 @@ import { Loader2 } from 'lucide-react';
 
 interface LabelingControlsProps {
   fileId: string;
-  onLabelSuccess: () => void;
+  onLabelSuccess: (fileId: string, label: string) => void;
 }
 
 export default function LabelingControls({ fileId, onLabelSuccess }: LabelingControlsProps) {
@@ -17,20 +17,21 @@ export default function LabelingControls({ fileId, onLabelSuccess }: LabelingCon
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
 
-  const handleLabelClick = (label: string) => {
+  const handleLabelClick = (labelId: string) => {
     const formData = new FormData();
     formData.append('fileId', fileId);
-    formData.append('label', label);
+    formData.append('label', labelId);
 
     startTransition(async () => {
       const result = await labelFileAction(formData);
       if (result.success) {
         toast({
-          title: 'Success',
+          title: 'Sukses',
           description: result.message,
           variant: 'default',
         });
-        onLabelSuccess();
+        const labelName = labels.find(l => l.id === labelId)?.name || labelId;
+        onLabelSuccess(fileId, labelName);
       } else {
         toast({
           title: 'Error',
@@ -43,11 +44,16 @@ export default function LabelingControls({ fileId, onLabelSuccess }: LabelingCon
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Jangan proses jika dialog atau input sedang aktif
+      if (document.querySelector('[role="dialog"], input:focus, textarea:focus')) {
+        return;
+      }
+
       const key = parseInt(event.key, 10);
       if (key >= 1 && key <= labels.length) {
         event.preventDefault();
         const label = labels[key - 1];
-        if (label) {
+        if (label && !isPending) {
           handleLabelClick(label.id);
         }
       }
@@ -57,7 +63,7 @@ export default function LabelingControls({ fileId, onLabelSuccess }: LabelingCon
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [fileId]);
+  }, [fileId, isPending]);
 
   return (
     <form ref={formRef}>

@@ -2,41 +2,63 @@
 
 import { revalidatePath } from 'next/cache';
 
-// This is a mock server action. In a real application, this would
-// interact with the Google Drive and Google Sheets APIs.
+// Ini adalah tindakan server tiruan. Dalam aplikasi nyata, ini akan
+// berinteraksi dengan Google Drive dan Google Sheets API.
 export async function labelFileAction(formData: FormData) {
   const fileId = formData.get('fileId');
   const label = formData.get('label');
-  const user = 'Zaid'; // This would come from the authenticated session
+  const user = 'Zaid'; // Ini akan datang dari sesi yang diautentikasi
+  const isUndo = formData.get('undo') === 'true';
 
   if (!fileId || !label) {
-    return { success: false, message: 'Missing file ID or label.' };
+    return { success: false, message: 'ID file atau label hilang.' };
   }
 
   try {
-    // Simulate API calls
-    console.log(`--- Labeling Process Started ---`);
-    console.log(`User: ${user}`);
-    console.log(`File ID: ${fileId}`);
-    console.log(`Label: ${label}`);
+    if (isUndo) {
+      // Logika untuk Mengurungkan
+      console.log(`--- Proses Pembatalan Dimulai ---`);
+      console.log(`User: ${user}`);
+      console.log(`File ID: ${fileId}`);
+      console.log(`Mengurungkan label: ${label}`);
 
-    // 1. Simulate renaming the file
-    await new Promise(resolve => setTimeout(resolve, 300));
-    console.log(`Step 1: Renamed file to 01_${user}_${label}.wav`);
+      // 1. Simulasikan pemindahan file kembali ke folder 'SEMUA'
+      await new Promise(resolve => setTimeout(resolve, 300));
+      console.log(`Langkah 1: Memindahkan file dari '${label}' kembali ke folder 'SEMUA'`);
 
-    // 2. Simulate moving the file
-    await new Promise(resolve => setTimeout(resolve, 300));
-    console.log(`Step 2: Moved file from 'ALL' to '${label}' folder`);
+      // 2. Simulasikan penghapusan log dari Google Sheets
+      await new Promise(resolve => setTimeout(resolve, 200));
+      console.log(`Langkah 2: Menghapus log transaksi dari Google Sheet`);
+      console.log(`--- Proses Pembatalan Selesai ---`);
 
-    // 3. Simulate logging to Google Sheets
-    await new Promise(resolve => setTimeout(resolve, 200));
-    console.log(`Step 3: Logged transaction to Google Sheet`);
-    console.log(`--- Labeling Process Finished ---`);
+      revalidatePath('/dashboard');
+      return { success: true, message: `Label untuk ${fileId} telah diurungkan.` };
 
-    revalidatePath('/dashboard');
-    return { success: true, message: `File ${fileId} labeled as ${label}.` };
+    } else {
+      // Logika Pelabelan Normal
+      console.log(`--- Proses Pelabelan Dimulai ---`);
+      console.log(`User: ${user}`);
+      console.log(`File ID: ${fileId}`);
+      console.log(`Label: ${label}`);
+
+      // 1. Simulasikan penggantian nama file
+      await new Promise(resolve => setTimeout(resolve, 300));
+      console.log(`Langkah 1: Mengganti nama file menjadi 01_${user}_${label}.wav`);
+
+      // 2. Simulasikan pemindahan file
+      await new Promise(resolve => setTimeout(resolve, 300));
+      console.log(`Langkah 2: Memindahkan file dari 'SEMUA' ke folder '${label}'`);
+
+      // 3. Simulasikan logging ke Google Sheets
+      await new Promise(resolve => setTimeout(resolve, 200));
+      console.log(`Langkah 3: Mencatat transaksi ke Google Sheet`);
+      console.log(`--- Proses Pelabelan Selesai ---`);
+
+      revalidatePath('/dashboard');
+      return { success: true, message: `File ${fileId} diberi label sebagai ${label}.` };
+    }
   } catch (error) {
-    console.error('Labeling failed:', error);
-    return { success: false, message: 'Failed to label the file.' };
+    console.error('Proses gagal:', error);
+    return { success: false, message: 'Gagal memproses file.' };
   }
 }
