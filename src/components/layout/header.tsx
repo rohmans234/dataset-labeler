@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Album, LayoutDashboard, LogOut, User, ShieldCheck } from 'lucide-react';
+import { Album, LayoutDashboard, LogOut, User, ShieldCheck, UserPlus } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const userAvatar = PlaceHolderImages.find(p => p.id === 'user-avatar-1');
@@ -72,19 +72,29 @@ export default function Header({ role = 'user' }: HeaderProps) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard">
-                  <LayoutDashboard className="mr-2 h-4 w-4" />
-                  <span>Dashboard</span>
-                </Link>
-              </DropdownMenuItem>
-              {role === 'admin' && (
+              {role === 'user' && (
                 <DropdownMenuItem asChild>
-                   <Link href="/admin">
-                    <ShieldCheck className="mr-2 h-4 w-4" />
-                    <span>Admin Panel</span>
-                   </Link>
+                  <Link href="/dashboard">
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    <span>Dashboard</span>
+                  </Link>
                 </DropdownMenuItem>
+              )}
+              {role === 'admin' && (
+                <>
+                  <DropdownMenuItem asChild>
+                     <Link href="/admin">
+                      <ShieldCheck className="mr-2 h-4 w-4" />
+                      <span>Admin Panel</span>
+                     </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                   <Link href="/admin/users">
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    <span>Add New User</span>
+                   </Link>
+                  </DropdownMenuItem>
+                </>
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
