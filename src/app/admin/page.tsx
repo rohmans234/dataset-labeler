@@ -1,13 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Archive, BarChart, CheckCircle2 } from "lucide-react";
+import { Activity, BarChart } from "lucide-react";
 import StatsCards from "@/components/admin/stats-cards";
 import LabelDistributionChart from "@/components/admin/label-distribution-chart";
 import ActivityChart from "@/components/admin/activity-chart";
 import { adminStats } from "@/lib/data";
 
-export default function AdminPage() {
+export default function AdminDashboardPage() {
   return (
-    <div className="container mx-auto p-4 md:p-8 space-y-8">
+    <div className="space-y-8">
       <header>
         <h1 className="text-3xl font-bold font-headline">Admin Dashboard</h1>
         <p className="text-muted-foreground">

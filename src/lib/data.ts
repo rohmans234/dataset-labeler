@@ -50,3 +50,15 @@ export const chartConfig = {
   Ali: { label: 'Ali', color: 'hsl(var(--chart-2))' },
   value: { label: 'Count', color: 'hsl(var(--primary))'},
 };
+
+export const users = [
+    { id: 'user1', name: 'Zaid', email: 'zaid@example.com', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d' },
+    { id: 'user2', name: 'Ali', email: 'ali@example.com', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704e' },
+];
+
+export const labelingHistory = [
+    { id: 'hist1', fileName: 'rec_001.wav', label: 'Mumtaz', user: 'Zaid', timestamp: '2023-05-07 10:30 AM' },
+    { id: 'hist2', fileName: 'rec_002.wav', label: 'Jayyid', user: 'Ali', timestamp: '2023-05-07 10:32 AM' },
+    { id: 'hist3', fileName: 'rec_003.wav', label: 'Rasib', user: 'Zaid', timestamp: '2023-05-07 10:35 AM' },
+    { id: 'hist4', fileName: 'rec_004.wav', label: 'Jayyid Jiddan', user: 'Ali', timestamp: '2023-05-07 10:38 AM' },
+];
