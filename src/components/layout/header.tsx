@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Album, LayoutDashboard, LogOut, User, ShieldCheck, UserPlus } from 'lucide-react';
+import { Album, LayoutDashboard, LogOut, User, ShieldCheck, UserPlus, History } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const userAvatar = PlaceHolderImages.find(p => p.id === 'user-avatar-1');
@@ -36,12 +36,20 @@ export default function Header({ role = 'user' }: HeaderProps) {
         </Link>
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
           {role === 'user' && (
-            <Link
-              href="/dashboard"
-              className="text-foreground/70 transition-colors hover:text-foreground"
-            >
-              Dashboard
-            </Link>
+            <>
+              <Link
+                href="/dashboard"
+                className="text-foreground/70 transition-colors hover:text-foreground"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/dashboard/history"
+                className="text-foreground/70 transition-colors hover:text-foreground"
+              >
+                History
+              </Link>
+            </>
           )}
           {role === 'admin' && (
             <Link
@@ -73,12 +81,20 @@ export default function Header({ role = 'user' }: HeaderProps) {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {role === 'user' && (
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard">
-                    <LayoutDashboard className="mr-2 h-4 w-4" />
-                    <span>Dashboard</span>
-                  </Link>
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard">
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      <span>Dashboard</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/history">
+                      <History className="mr-2 h-4 w-4" />
+                      <span>My History</span>
+                    </Link>
+                  </DropdownMenuItem>
+                </>
               )}
               {role === 'admin' && (
                 <>
@@ -91,7 +107,7 @@ export default function Header({ role = 'user' }: HeaderProps) {
                   <DropdownMenuItem asChild>
                    <Link href="/admin/users">
                     <UserPlus className="mr-2 h-4 w-4" />
-                    <span>Add New User</span>
+                    <span>User Management</span>
                    </Link>
                   </DropdownMenuItem>
                 </>

@@ -31,12 +31,6 @@ export default function AdminLayout({
                   Users
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton href="/admin/history" isActive={pathname === '/admin/history'}>
-                  <History />
-                  History
-                </SidebarMenuButton>
-              </SidebarMenuItem>
             </SidebarMenu>
           </Sidebar>
           <SidebarInset>
