@@ -30,12 +30,14 @@ type User = {
   id: string;
   name: string;
   email: string;
+  password?: string;
   avatar: string;
 };
 
 type UserFormData = {
   name: string;
   email: string;
+  password?: string;
 };
 
 export default function UsersPage() {
@@ -52,6 +54,7 @@ export default function UsersPage() {
       id: `user${users.length + 1}`,
       name: data.name,
       email: data.email,
+      password: data.password,
       avatar: `https://i.pravatar.cc/150?u=${Math.random()}`
     };
     setUsers([...users, newUser]);
@@ -61,7 +64,7 @@ export default function UsersPage() {
 
   const handleEditUser: SubmitHandler<UserFormData> = (data) => {
     if (selectedUser) {
-      setUsers(users.map(u => u.id === selectedUser.id ? { ...u, name: data.name, email: data.email } : u));
+      setUsers(users.map(u => u.id === selectedUser.id ? { ...u, name: data.name, email: data.email, password: data.password || u.password } : u));
     }
     reset();
     setEditUserOpen(false);
@@ -72,6 +75,7 @@ export default function UsersPage() {
     setSelectedUser(user);
     setValue('name', user.name);
     setValue('email', user.email);
+    setValue('password', ''); // Don't pre-fill password for security
     setEditUserOpen(true);
   };
   
@@ -125,6 +129,12 @@ export default function UsersPage() {
                             </Label>
                             <Input id="email" type="email" {...register('email', { required: true })} className="col-span-3" />
                         </div>
+                         <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="password" className="text-right">
+                                Password
+                            </Label>
+                            <Input id="password" type="password" {...register('password', { required: true })} className="col-span-3" />
+                        </div>
                     </div>
                     <DialogFooter>
                         <Button type="submit">Save User</Button>
@@ -157,6 +167,12 @@ export default function UsersPage() {
                 </Label>
                 <Input id="edit-email" type="email" {...register('email', { required: true })} className="col-span-3" />
               </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-password" className="text-right">
+                    Password
+                </Label>
+                <Input id="edit-password" type="password" {...register('password')} className="col-span-3" placeholder="Leave blank to keep current" />
+                </div>
             </div>
             <DialogFooter>
               <Button type="submit">Save Changes</Button>

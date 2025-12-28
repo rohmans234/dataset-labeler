@@ -1,3 +1,4 @@
+
 export const labels = [
   { id: 'mumtaz', name: 'Mumtaz', color: 'bg-green-500' },
   { id: 'jayyid_jiddan', name: 'Jayyid Jiddan', color: 'bg-blue-500' },
@@ -52,8 +53,8 @@ export const chartConfig = {
 };
 
 export const users = [
-    { id: 'user1', name: 'Zaid', email: 'zaid@example.com', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d' },
-    { id: 'user2', name: 'Ali', email: 'ali@example.com', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704e' },
+    { id: 'user1', name: 'Zaid', email: 'zaid@example.com', password: 'password123', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d' },
+    { id: 'user2', name: 'Ali', email: 'ali@example.com', password: 'password456', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704e' },
 ];
 
 export const labelingHistory = [
