@@ -1,44 +1,66 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import WaveformPlayer from '@/components/dashboard/waveform-player';
 import LabelingControls from '@/components/dashboard/labeling-controls';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { audioFiles as initialAudioFiles } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Info, ListMusic, CheckCircle, SkipForward, Undo } from 'lucide-react';
+import { Info, ListMusic, CheckCircle, SkipForward, Undo, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { labelFileAction } from '@/lib/actions';
 import { useToast } from '@/hooks/use-toast';
+import { getAudioFiles } from '@/lib/google';
+
+type AudioFile = {
+  id: string;
+  name: string;
+  url: string;
+};
 
 export default function DashboardPage() {
-  const [audioFiles, setAudioFiles] = useState([...initialAudioFiles]);
+  const [audioFiles, setAudioFiles] = useState<AudioFile[]>([]);
+  const [initialFileCount, setInitialFileCount] = useState(0);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
-  const [lastLabeled, setLastLabeled] = useState<{ fileId: string; label: string } | null>(null);
+  const [lastLabeled, setLastLabeled] = useState<{ fileId: string; label: string; originalParent: string; } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const currentFile = audioFiles[currentFileIndex];
-  const labeledCount = initialAudioFiles.length - (audioFiles.length - currentFileIndex);
-
-  const handleLabelSuccess = (fileId: string, label: string) => {
-    setLastLabeled({ fileId, label });
-    if (currentFileIndex < audioFiles.length - 1) {
-      setCurrentFileIndex(currentFileIndex + 1);
-    } else {
-      // This was the last file
-      setCurrentFileIndex(currentFileIndex + 1); // Go past the end of the array
+  const fetchFiles = async () => {
+    setIsLoading(true);
+    try {
+      const files = await getAudioFiles();
+      setAudioFiles(files);
+      setInitialFileCount(files.length);
+      setCurrentFileIndex(0);
+    } catch (error) {
+      toast({
+        title: 'Gagal Memuat File',
+        description: 'Tidak dapat mengambil file audio dari Google Drive.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchFiles();
+  }, []);
+
+  const currentFile = audioFiles[currentFileIndex];
+  const labeledCount = initialFileCount - audioFiles.length + (currentFile ? 0 : (initialFileCount > 0 ? 1 : 0));
+
+
+  const handleLabelSuccess = (fileId: string, label: string, originalParent: string) => {
+    setLastLabeled({ fileId, label, originalParent });
+    // Hapus file yang sudah dilabeli dari state
+    setAudioFiles(prevFiles => prevFiles.filter(f => f.id !== fileId));
+    // Jangan increment index, karena arraynya sudah bergeser
   };
   
   const handleSkipFile = () => {
     if (currentFile) {
-      // Move the current file to the end of the array and go to the next one
-      setAudioFiles(prevFiles => {
-        const newFiles = [...prevFiles];
-        const skippedFile = newFiles.splice(currentFileIndex, 1)[0];
-        newFiles.push(skippedFile);
-        return newFiles;
-      });
+      setCurrentFileIndex(prevIndex => (prevIndex + 1) % audioFiles.length);
     }
   };
 
@@ -52,15 +74,14 @@ export default function DashboardPage() {
     formData.append('undo', 'true');
     formData.append('fileId', lastLabeled.fileId);
     formData.append('label', lastLabeled.label);
+    formData.append('originalParent', lastLabeled.originalParent);
     
     const result = await labelFileAction(formData);
 
     if (result.success) {
       toast({ title: 'Berhasil diurungkan', description: result.message });
-      // Go back to the previous file
-      if (currentFileIndex > 0) {
-        setCurrentFileIndex(currentFileIndex - 1);
-      }
+      // Muat ulang daftar file untuk mendapatkan file yang diurungkan kembali
+      fetchFiles();
       setLastLabeled(null);
     } else {
       toast({ title: 'Gagal mengurungkan', description: result.message, variant: 'destructive' });
@@ -68,11 +89,21 @@ export default function DashboardPage() {
   };
 
   const resetQueue = () => {
-    setAudioFiles([...initialAudioFiles]);
-    setCurrentFileIndex(0);
+    fetchFiles();
     setLastLabeled(null);
   };
 
+  if (isLoading) {
+    return (
+        <div className="container mx-auto p-4 md:p-8">
+            <div className="flex flex-col items-center justify-center h-96 text-center">
+                <Loader2 className="w-16 h-16 text-primary animate-spin mb-4" />
+                <h3 className="text-2xl font-bold font-headline mb-2">Memuat Audio...</h3>
+                <p className="text-muted-foreground">Mengambil file dari Google Drive.</p>
+            </div>
+        </div>
+    )
+  }
 
   return (
     <div className="container mx-auto p-4 md:p-8">
@@ -94,7 +125,11 @@ export default function DashboardPage() {
                     </p>
                   </div>
                   <WaveformPlayer audioUrl={currentFile.url} key={currentFile.id} />
-                  <LabelingControls fileId={currentFile.id} onLabelSuccess={handleLabelSuccess} />
+                  <LabelingControls 
+                    fileId={currentFile.id}
+                    originalParent={process.env.NEXT_PUBLIC_ID_FOLDER_ALL || ''}
+                    onLabelSuccess={handleLabelSuccess} 
+                  />
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-96 text-center">
@@ -103,7 +138,10 @@ export default function DashboardPage() {
                   <p className="text-muted-foreground mb-6">
                     Anda telah berhasil memberi label pada semua file audio yang tersedia.
                   </p>
-                  <Button onClick={resetQueue}>Mulai Lagi</Button>
+                  <Button onClick={resetQueue}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Muat Ulang
+                  </Button>
                 </div>
               )}
             </CardContent>
@@ -117,7 +155,7 @@ export default function DashboardPage() {
               <ListMusic className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{labeledCount} / {initialAudioFiles.length}</div>
+              <div className="text-2xl font-bold">{currentFileIndex} / {initialFileCount}</div>
               <p className="text-xs text-muted-foreground">file berlabel</p>
             </CardContent>
           </Card>

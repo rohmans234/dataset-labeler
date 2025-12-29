@@ -1,64 +1,105 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { getDriveClient, getSheetsClient } from './google';
+import { labels } from './data';
 
-// Ini adalah tindakan server tiruan. Dalam aplikasi nyata, ini akan
-// berinteraksi dengan Google Drive dan Google Sheets API.
-export async function labelFileAction(formData: FormData) {
-  const fileId = formData.get('fileId');
-  const label = formData.get('label');
-  const user = 'Zaid'; // Ini akan datang dari sesi yang diautentikasi
+// Helper function untuk mendapatkan ID folder tujuan berdasarkan nama label
+const getFolderIdByLabel = (labelName: string): string => {
+    const labelMap: { [key: string]: string | undefined } = {
+        'Mumtaz': process.env.ID_FOLDER_MUMTAZ,
+        'Jayyid Jiddan': process.env.ID_FOLDER_JAYYID_JIDDAN,
+        'Jayyid': process.env.ID_FOLDER_JAYYID,
+        'Maqbul': process.env.ID_FOLDER_MAQBUL,
+        'Rasib': process.env.ID_FOLDER_RASIB,
+    };
+    return labelMap[labelName] || '';
+};
+
+export async function labelFileAction(formData: FormData): Promise<{ success: boolean; message: string; originalParent?: string; }> {
+  const fileId = formData.get('fileId') as string;
+  const labelId = formData.get('label') as string;
   const isUndo = formData.get('undo') === 'true';
+  const originalParent = formData.get('originalParent') as string || process.env.ID_FOLDER_ALL as string;
+
+  const user = 'Zaid'; // TODO: Ganti dengan data sesi dari NextAuth
+  const label = labels.find(l => isUndo ? l.name === labelId : l.id === labelId);
 
   if (!fileId || !label) {
-    return { success: false, message: 'ID file atau label hilang.' };
+    return { success: false, message: 'ID file atau label tidak valid.' };
   }
+
+  const drive = getDriveClient();
+  const sheets = getSheetsClient();
+  const spreadsheetId = process.env.ID_SPREADSHEET_LOG;
 
   try {
     if (isUndo) {
-      // Logika untuk Mengurungkan
       console.log(`--- Proses Pembatalan Dimulai ---`);
-      console.log(`User: ${user}`);
-      console.log(`File ID: ${fileId}`);
-      console.log(`Mengurungkan label: ${label}`);
+      const targetFolderId = getFolderIdByLabel(label.name);
 
-      // 1. Simulasikan pemindahan file kembali ke folder 'SEMUA'
-      await new Promise(resolve => setTimeout(resolve, 300));
-      console.log(`Langkah 1: Memindahkan file dari '${label}' kembali ke folder 'SEMUA'`);
-
-      // 2. Simulasikan penghapusan log dari Google Sheets
-      await new Promise(resolve => setTimeout(resolve, 200));
-      console.log(`Langkah 2: Menghapus log transaksi dari Google Sheet`);
-      console.log(`--- Proses Pembatalan Selesai ---`);
-
+      await drive.files.update({
+        fileId: fileId,
+        addParents: originalParent,
+        removeParents: targetFolderId,
+        fields: 'id, parents',
+      });
+      console.log(`File ${fileId} dipindahkan dari folder '${label.name}' kembali ke 'ALL'.`);
+      
+      // Hapus log dari Google Sheet (implementasi sederhana: cari baris dan hapus)
+      // Ini adalah implementasi yang lebih kompleks, untuk saat ini kita lewati penghapusan log
+      console.log(`Log untuk file ${fileId} dengan label ${label.name} perlu dihapus secara manual atau dengan logika yang lebih canggih.`);
+      
       revalidatePath('/dashboard');
-      return { success: true, message: `Label untuk ${fileId} telah diurungkan.` };
+      return { success: true, message: `Label untuk file telah diurungkan.` };
 
     } else {
-      // Logika Pelabelan Normal
       console.log(`--- Proses Pelabelan Dimulai ---`);
-      console.log(`User: ${user}`);
-      console.log(`File ID: ${fileId}`);
-      console.log(`Label: ${label}`);
+      
+      const file = await drive.files.get({ fileId, fields: 'name, parents' });
+      if (!file.data.parents) {
+          throw new Error('File tidak memiliki folder induk.');
+      }
+      const currentParent = file.data.parents[0];
+      const newName = `${fileId.substring(0, 5)}_${user}_${label.id}.wav`;
+      const destinationFolderId = getFolderIdByLabel(label.name);
 
-      // 1. Simulasikan penggantian nama file
-      await new Promise(resolve => setTimeout(resolve, 300));
-      console.log(`Langkah 1: Mengganti nama file menjadi 01_${user}_${label}.wav`);
+      if (!destinationFolderId) {
+          return { success: false, message: `Folder tujuan untuk label '${label.name}' tidak ditemukan.` };
+      }
 
-      // 2. Simulasikan pemindahan file
-      await new Promise(resolve => setTimeout(resolve, 300));
-      console.log(`Langkah 2: Memindahkan file dari 'SEMUA' ke folder '${label}'`);
+      // 1. Ganti nama file
+      await drive.files.update({
+        fileId: fileId,
+        requestBody: { name: newName },
+      });
+      console.log(`File diganti namanya menjadi: ${newName}`);
 
-      // 3. Simulasikan logging ke Google Sheets
-      await new Promise(resolve => setTimeout(resolve, 200));
-      console.log(`Langkah 3: Mencatat transaksi ke Google Sheet`);
-      console.log(`--- Proses Pelabelan Selesai ---`);
+      // 2. Pindahkan file
+      await drive.files.update({
+        fileId: fileId,
+        addParents: destinationFolderId,
+        removeParents: currentParent,
+        fields: 'id, parents',
+      });
+      console.log(`File dipindahkan ke folder: ${label.name}`);
 
+      // 3. Catat ke Google Sheets
+      await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: 'A1',
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: [[new Date().toISOString(), user, file.data.name, newName, label.name, fileId]],
+        },
+      });
+      console.log('Transaksi dicatat di Google Sheet.');
+      
       revalidatePath('/dashboard');
-      return { success: true, message: `File ${fileId} diberi label sebagai ${label}.` };
+      return { success: true, message: `File diberi label sebagai ${label.name}.`, originalParent: currentParent };
     }
-  } catch (error) {
-    console.error('Proses gagal:', error);
+  } catch (error: any) {
+    console.error('Proses gagal:', error.message);
     return { success: false, message: 'Gagal memproses file.' };
   }
 }

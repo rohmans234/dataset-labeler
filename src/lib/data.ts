@@ -7,13 +7,11 @@ export const labels = [
   { id: 'rasib', name: 'Rasib', color: 'bg-red-500' },
 ];
 
-export const audioFiles = [
-  { id: 'file1', name: 'rec_001.wav', url: 'https://wavesurfer-js.org/example/media/demo.wav' },
-  { id: 'file2', name: 'rec_002.wav', url: 'https://wavesurfer-js.org/example/media/stereo.mp3' },
-  { id: 'file3', name: 'rec_003.wav', url: 'https://wavesurfer-js.org/example/media/demo.wav' },
-  { id: 'file4', name: 'rec_004.wav', url: 'https://wavesurfer-js.org/example/media/stereo.mp3' },
-  { id: 'file5', name: 'rec_005.wav', url: 'https://wavesurfer-js.org/example/media/demo.wav' },
-];
+// audioFiles sekarang akan diambil secara dinamis dari Google Drive
+// export const audioFiles = [
+//   { id: 'file1', name: 'rec_001.wav', url: 'https://wavesurfer-js.org/example/media/demo.wav' },
+//   ...
+// ];
 
 
 export const adminStats = {

@@ -9,10 +9,11 @@ import { Loader2 } from 'lucide-react';
 
 interface LabelingControlsProps {
   fileId: string;
-  onLabelSuccess: (fileId: string, label: string) => void;
+  originalParent: string;
+  onLabelSuccess: (fileId: string, label: string, originalParent: string) => void;
 }
 
-export default function LabelingControls({ fileId, onLabelSuccess }: LabelingControlsProps) {
+export default function LabelingControls({ fileId, originalParent, onLabelSuccess }: LabelingControlsProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
@@ -21,6 +22,7 @@ export default function LabelingControls({ fileId, onLabelSuccess }: LabelingCon
     const formData = new FormData();
     formData.append('fileId', fileId);
     formData.append('label', labelId);
+    formData.append('originalParent', originalParent);
 
     startTransition(async () => {
       const result = await labelFileAction(formData);
@@ -31,7 +33,7 @@ export default function LabelingControls({ fileId, onLabelSuccess }: LabelingCon
           variant: 'default',
         });
         const labelName = labels.find(l => l.id === labelId)?.name || labelId;
-        onLabelSuccess(fileId, labelName);
+        onLabelSuccess(fileId, labelName, result.originalParent || originalParent);
       } else {
         toast({
           title: 'Error',
@@ -63,11 +65,12 @@ export default function LabelingControls({ fileId, onLabelSuccess }: LabelingCon
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [fileId, isPending]);
+  }, [fileId, isPending, originalParent]);
 
   return (
     <form ref={formRef}>
       <input type="hidden" name="fileId" value={fileId} />
+      <input type="hidden" name="originalParent" value={originalParent} />
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {labels.map((label, index) => (
           <Button
