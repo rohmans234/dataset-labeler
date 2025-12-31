@@ -39,7 +39,6 @@ export async function fetchFilesAction() {
 export async function labelFileAction(formData: FormData) {
   const fileId = formData.get('fileId') as string;
   const label = formData.get('label') as string;
-  const isUndo = formData.get('undo') === 'true';
   const user = 'Zaid'; 
 
   const folderIds: Record<string, string | undefined> = {
@@ -51,29 +50,39 @@ export async function labelFileAction(formData: FormData) {
   };
 
   try {
-    // 1. Ambil metadata file secara spesifik
+    // 1. Ambil metadata file
     const file = await drive.files.get({ 
-      fileId: fileId, 
-      fields: 'id, name, parents' 
+      fileId, 
+      fields: 'id, name, parents',
+      supportsAllDrives: true 
     });
     
     const oldName = file.data.name;
-    const currentParents = (file.data.parents || []).join(',');
-
-    // --- LOGIKA LABELING (MOVE) ---
     const destFolderId = folderIds[label];
-    if (!destFolderId) throw new Error(`Folder untuk label ${label} tidak ditemukan.`);
+    
+    // AMBIL ID FOLDER ALL DARI ENV SEBAGAI CADANGAN
+    const folderAllId = process.env.NEXT_PUBLIC_ID_FOLDER_ALL?.trim();
+
+    // JIKA API tidak memberikan parents, gunakan folderAllId dari env
+    const currentParents = (file.data.parents && file.data.parents.length > 0) 
+      ? file.data.parents.join(',') 
+      : folderAllId;
+
+    if (!destFolderId) throw new Error(`Folder tujuan ${label} tidak ditemukan.`);
+    if (!currentParents) throw new Error("ID folder asal (ALL) tidak ditemukan di .env");
+
     const newName = `01_${user}_${label}`;
 
-    // 2. EKSEKUSI PINDAH & RENAME
+    // 2. EKSEKUSI MOVE (CUT & PASTE)
+    console.log(`Memindahkan ${oldName} dari ${currentParents} ke ${destFolderId}...`);
+    
     await drive.files.update({
       fileId: fileId,
-      addParents: destFolderId,      // Masukkan ke folder tujuan
-      removeParents: currentParents, // Cabut dari folder asal (ALL)
-      // PENTING: Untuk Drive pribadi, parameter ini membantu memperjelas aksi
+      addParents: destFolderId,      // Paste
+      removeParents: currentParents, // Cut
       supportsAllDrives: true,
-      requestBody: { 
-        name: newName 
+      requestBody: {
+        name: newName,               // Rename
       },
     });
 
@@ -81,7 +90,7 @@ export async function labelFileAction(formData: FormData) {
     const spreadsheetId = process.env.ID_SPREADSHEET_LOG?.trim();
     if (spreadsheetId) {
       await sheets.spreadsheets.values.append({
-        spreadsheetId: spreadsheetId,
+        spreadsheetId,
         range: 'logs!A1',
         valueInputOption: 'USER_ENTERED',
         requestBody: {
@@ -91,20 +100,18 @@ export async function labelFileAction(formData: FormData) {
     }
 
     revalidatePath('/dashboard');
-    revalidatePath('/dashboard/history');
-    return { success: true, message: `Berhasil! File sudah di folder ${label}` };
+    return { success: true, message: `Berhasil! File pindah ke ${label}` };
 
   } catch (error: any) {
     console.error('Labeling Error:', error.message);
     
-    // Jika masih error "parents", berarti temanmu HARUS melakukan setting di Drive-nya
+    // Kasus spesifik untuk Drive teman (Restriksi Move)
     if (error.message.includes('parents')) {
       return { 
         success: false, 
-        message: "Gagal memindah. Temanmu (Owner Drive) harus memberikan izin 'Editor' dan mencentang 'Editors can change permissions' di folder tersebut." 
+        message: "Gagal (Izin). Minta temanmu mencentang 'Editors can change permissions' di folder ALL." 
       };
     }
-    
-    return { success: false, message: error.message };
+    return { success: false, message: "Gagal: " + error.message };
   }
 }
