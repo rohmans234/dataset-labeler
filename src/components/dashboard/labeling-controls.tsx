@@ -19,30 +19,20 @@ export default function LabelingControls({ fileId, originalParent, onLabelSucces
   const formRef = useRef<HTMLFormElement>(null);
 
   const handleLabelClick = (labelId: string) => {
-    const formData = new FormData();
-    formData.append('fileId', fileId);
-    formData.append('label', labelId);
-    formData.append('originalParent', originalParent);
+  const formData = new FormData();
+  formData.append('fileId', fileId); // fileId didapat dari props
+  formData.append('label', labelId);
 
-    startTransition(async () => {
-      const result = await labelFileAction(formData);
-      if (result.success) {
-        toast({
-          title: 'Sukses',
-          description: result.message,
-          variant: 'default',
-        });
-        const labelName = labels.find(l => l.id === labelId)?.name || labelId;
-        onLabelSuccess(fileId, labelName, result.originalParent || originalParent);
-      } else {
-        toast({
-          title: 'Error',
-          description: result.message,
-          variant: 'destructive',
-        });
-      }
-    });
-  };
+  startTransition(async () => {
+    const result = await labelFileAction(formData);
+    if (result.success) {
+      toast({ title: 'Berhasil', description: result.message });
+      onLabelSuccess(fileId, labelId, ''); // Trigger ke parent
+    } else {
+      toast({ title: 'Gagal', description: result.message, variant: 'destructive' });
+    }
+  });
+};
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

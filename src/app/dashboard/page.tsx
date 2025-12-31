@@ -5,12 +5,12 @@ import WaveformPlayer from '@/components/dashboard/waveform-player';
 import LabelingControls from '@/components/dashboard/labeling-controls';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-// PERBAIKAN: Loader2 ditambahkan ke import lucide-react
 import { Info, ListMusic, CheckCircle, SkipForward, Undo, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-// PERBAIKAN: Import fetchFilesAction dari actions (Server Side), bukan google.ts
-import { labelFileAction, fetchFilesAction } from '@/lib/actions';
+import { labelFileAction, fetchFilesAction,} from '@/lib/actions';
+
+
 
 type AudioFile = {
   id: string;
