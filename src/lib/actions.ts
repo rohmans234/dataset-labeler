@@ -1,105 +1,96 @@
+// src/lib/actions.ts
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getDriveClient, getSheetsClient } from './google';
-import { labels } from './data';
+import { drive, sheets } from './google';
 
-// Helper function untuk mendapatkan ID folder tujuan berdasarkan nama label
-const getFolderIdByLabel = (labelName: string): string => {
-    const labelMap: { [key: string]: string | undefined } = {
-        'Mumtaz': process.env.ID_FOLDER_MUMTAZ,
-        'Jayyid Jiddan': process.env.ID_FOLDER_JAYYID_JIDDAN,
-        'Jayyid': process.env.ID_FOLDER_JAYYID,
-        'Maqbul': process.env.ID_FOLDER_MAQBUL,
-        'Rasib': process.env.ID_FOLDER_RASIB,
-    };
-    return labelMap[labelName] || '';
-};
+export async function fetchFilesAction() {
+  // SESUAIKAN: Gunakan nama yang ada di .env kamu
+  const folderAllId = process.env.NEXT_PUBLIC_ID_FOLDER_ALL;
 
-export async function labelFileAction(formData: FormData): Promise<{ success: boolean; message: string; originalParent?: string; }> {
-  const fileId = formData.get('fileId') as string;
-  const labelId = formData.get('label') as string;
-  const isUndo = formData.get('undo') === 'true';
-  const originalParent = formData.get('originalParent') as string || process.env.ID_FOLDER_ALL as string;
-
-  const user = 'Zaid'; // TODO: Ganti dengan data sesi dari NextAuth
-  const label = labels.find(l => isUndo ? l.name === labelId : l.id === labelId);
-
-  if (!fileId || !label) {
-    return { success: false, message: 'ID file atau label tidak valid.' };
+  if (!folderAllId) {
+    console.error('ERROR: NEXT_PUBLIC_ID_FOLDER_ALL tidak terbaca dari .env');
+    return { success: false, data: [], message: 'Konfigurasi Server Error.' };
   }
 
-  const drive = getDriveClient();
-  const sheets = getSheetsClient();
-  const spreadsheetId = process.env.ID_SPREADSHEET_LOG;
+  try {
+    const response = await drive.files.list({
+      q: `'${folderAllId.trim()}' in parents and trashed = false`,
+      fields: 'files(id, name)',
+      pageSize: 50,
+    });
+
+    return { success: true, data: response.data.files || [] };
+  } catch (error: any) {
+    console.error('Drive API Error:', error.message);
+    return { success: false, data: [], message: error.message };
+  }
+}
+
+export async function labelFileAction(formData: FormData) {
+  const fileId = formData.get('fileId') as string;
+  const label = formData.get('label') as string;
+  const isUndo = formData.get('undo') === 'true';
+  const user = 'Zaid'; 
+
+  // Mapping Folder (Pastikan ID_FOLDER_... di .env sudah benar)
+  const folderIds: Record<string, string | undefined> = {
+    'mumtaz': process.env.ID_FOLDER_MUMTAZ,
+    'jayyid_jiddan': process.env.ID_FOLDER_JAYYID_JIDDAN,
+    'jayyid': process.env.ID_FOLDER_JAYYID,
+    'maqbul': process.env.ID_FOLDER_MAQBUL,
+    'rasib': process.env.ID_FOLDER_RASIB,
+  };
 
   try {
     if (isUndo) {
-      console.log(`--- Proses Pembatalan Dimulai ---`);
-      const targetFolderId = getFolderIdByLabel(label.name);
+      const targetFolder = process.env.NEXT_PUBLIC_ID_FOLDER_ALL;
+      if (!targetFolder) throw new Error("ID Folder ALL tidak ditemukan");
 
+      const file = await drive.files.get({ fileId, fields: 'parents' });
+      const currentParents = file.data.parents?.join(',') || '';
+      
       await drive.files.update({
         fileId: fileId,
-        addParents: originalParent,
-        removeParents: targetFolderId,
-        fields: 'id, parents',
+        addParents: targetFolder,
+        removeParents: currentParents,
       });
-      console.log(`File ${fileId} dipindahkan dari folder '${label.name}' kembali ke 'ALL'.`);
-      
-      // Hapus log dari Google Sheet (implementasi sederhana: cari baris dan hapus)
-      // Ini adalah implementasi yang lebih kompleks, untuk saat ini kita lewati penghapusan log
-      console.log(`Log untuk file ${fileId} dengan label ${label.name} perlu dihapus secara manual atau dengan logika yang lebih canggih.`);
-      
+
       revalidatePath('/dashboard');
-      return { success: true, message: `Label untuk file telah diurungkan.` };
+      return { success: true, message: 'Berhasil dikembalikan.' };
+    }
 
-    } else {
-      console.log(`--- Proses Pelabelan Dimulai ---`);
-      
-      const file = await drive.files.get({ fileId, fields: 'name, parents' });
-      if (!file.data.parents) {
-          throw new Error('File tidak memiliki folder induk.');
-      }
-      const currentParent = file.data.parents[0];
-      const newName = `${fileId.substring(0, 5)}_${user}_${label.id}.wav`;
-      const destinationFolderId = getFolderIdByLabel(label.name);
+    const destFolderId = folderIds[label];
+    if (!destFolderId) throw new Error(`Folder untuk ${label} belum diatur di .env`);
 
-      if (!destinationFolderId) {
-          return { success: false, message: `Folder tujuan untuk label '${label.name}' tidak ditemukan.` };
-      }
+    const file = await drive.files.get({ fileId, fields: 'name, parents' });
+    const oldName = file.data.name;
+    const newName = `01_${user}_${label}`;
 
-      // 1. Ganti nama file
-      await drive.files.update({
-        fileId: fileId,
-        requestBody: { name: newName },
-      });
-      console.log(`File diganti namanya menjadi: ${newName}`);
+    // 1. Rename & Move
+    await drive.files.update({
+      fileId: fileId,
+      addParents: destFolderId,
+      removeParents: file.data.parents?.join(','),
+      requestBody: { name: newName },
+    });
 
-      // 2. Pindahkan file
-      await drive.files.update({
-        fileId: fileId,
-        addParents: destinationFolderId,
-        removeParents: currentParent,
-        fields: 'id, parents',
-      });
-      console.log(`File dipindahkan ke folder: ${label.name}`);
-
-      // 3. Catat ke Google Sheets
+    // 2. Log ke Sheets
+    const spreadsheetId = process.env.ID_SPREADSHEET_LOG;
+    if (spreadsheetId) {
       await sheets.spreadsheets.values.append({
-        spreadsheetId,
-        range: 'A1',
+        spreadsheetId: spreadsheetId,
+        range: 'logs!A:E',
         valueInputOption: 'USER_ENTERED',
         requestBody: {
-          values: [[new Date().toISOString(), user, file.data.name, newName, label.name, fileId]],
+          values: [[new Date().toLocaleString('id-ID'), user, oldName, newName, label]],
         },
       });
-      console.log('Transaksi dicatat di Google Sheet.');
-      
-      revalidatePath('/dashboard');
-      return { success: true, message: `File diberi label sebagai ${label.name}.`, originalParent: currentParent };
     }
+
+    revalidatePath('/dashboard');
+    return { success: true, message: 'Berhasil melabeli!' };
   } catch (error: any) {
-    console.error('Proses gagal:', error.message);
-    return { success: false, message: 'Gagal memproses file.' };
+    return { success: false, message: error.message };
   }
 }
