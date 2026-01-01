@@ -1,139 +1,65 @@
-'use client';
+import { fetchHistoryAction } from '@/lib/actions';
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { labelingHistory as initialHistory, labels } from "@/lib/data";
-import { Badge } from "@/components/ui/badge";
-import { Button } from '@/components/ui/button';
-import { Edit } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useToast } from '@/hooks/use-toast';
-
-type HistoryItem = {
-  id: string;
-  fileName: string;
-  label: string;
-  user: string;
-  timestamp: string;
-};
-
-export default function HistoryPage() {
-  const [history, setHistory] = useState<HistoryItem[]>(initialHistory);
-  const [selectedHistoryItem, setSelectedHistoryItem] = useState<HistoryItem | null>(null);
-  const [newLabel, setNewLabel] = useState('');
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const { toast } = useToast();
-
-  const openEditDialog = (item: HistoryItem) => {
-    setSelectedHistoryItem(item);
-    setNewLabel(item.label);
-    setIsEditDialogOpen(true);
-  };
-
-  const handleUpdateLabel = () => {
-    if (!selectedHistoryItem || !newLabel) return;
-
-    // Simulate API call to update the label
-    console.log(`Updating ${selectedHistoryItem.fileName} from ${selectedHistoryItem.label} to ${newLabel}`);
-
-    setHistory(history.map(item => 
-      item.id === selectedHistoryItem.id ? { ...item, label: newLabel, timestamp: new Date().toLocaleString('en-US', { hour12: true, month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric' }) } : item
-    ));
-
-    toast({
-      title: 'Label Updated',
-      description: `Successfully updated ${selectedHistoryItem.fileName} to ${newLabel}.`,
-    });
-    
-    setIsEditDialogOpen(false);
-    setSelectedHistoryItem(null);
-  };
+export default async function HistoryPage() {
+  const result = await fetchHistoryAction();
+  const history = result.data || [];
 
   return (
-    <div className="container mx-auto p-4 md:p-8">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold font-headline">My Labeling History</h1>
-        <p className="text-muted-foreground">
-          Review and edit your past labeling activity.
-        </p>
-      </header>
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Riwayat Pelabelan</h1>
+        <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+          Total: {history.length} File
+        </span>
+      </div>
 
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Label for {selectedHistoryItem?.fileName}</DialogTitle>
-            <DialogDescription>
-              Select a new label for this audio file. This will simulate updating the file and the log.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Select onValueChange={setNewLabel} defaultValue={newLabel}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a new label" />
-              </SelectTrigger>
-              <SelectContent>
-                {labels.map(label => (
-                  <SelectItem key={label.id} value={label.name}>{label.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleUpdateLabel}>Save Changes</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-
-      <Card>
-        <CardContent className="pt-6">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>File Name</TableHead>
-                <TableHead>Label</TableHead>
-                <TableHead>Timestamp</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {history.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.fileName}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{item.label}</Badge>
-                  </TableCell>
-                  <TableCell>{item.timestamp}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(item)}>
-                      <Edit className="h-4 w-4" />
-                      <span className="sr-only">Edit Label</span>
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <div className="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pelabel</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Asli</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Baru</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Label</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {history.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-6 py-10 text-center text-gray-500">
+                  Belum ada riwayat pelabelan.
+                </td>
+              </tr>
+            ) : (
+              history.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    {item.timestamp}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {item.user}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500 truncate max-w-[200px]" title={item.originalName}>
+                    {item.originalName}
+                  </td>
+                  <td className="px-6 py-4 text-sm font-mono text-blue-600 bg-blue-50">
+                    {item.newName}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                      ${item.label === 'MUMTAZ' ? 'bg-green-100 text-green-800' : 
+                        item.label === 'RASIB' ? 'bg-red-100 text-red-800' : 
+                        'bg-yellow-100 text-yellow-800'}`}>
+                      {item.label}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

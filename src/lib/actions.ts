@@ -1,4 +1,3 @@
-// src/lib/actions.ts
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -9,84 +8,64 @@ import { drive, sheets } from './google';
  */
 export async function fetchFilesAction() {
   const folderAllId = process.env.NEXT_PUBLIC_ID_FOLDER_ALL?.trim();
-
-  if (!folderAllId) {
-    console.error('ERROR: NEXT_PUBLIC_ID_FOLDER_ALL tidak terbaca');
-    return { success: false, data: [], message: 'Konfigurasi Folder ALL tidak ditemukan.' };
-  }
+  if (!folderAllId) return { success: false, data: [] };
 
   try {
     const response = await drive.files.list({
       q: `'${folderAllId}' in parents and trashed = false`,
-      // FIX: Tambahkan mimeType di fields agar tidak undefined
       fields: 'files(id, name, mimeType)', 
-      pageSize: 50,
+      pageSize: 100,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
     });
 
-    // Log untuk memastikan tipe file (Shortcut atau Asli)
-    console.log("Daftar File:", response.data.files?.map(f => `${f.name} (${f.mimeType})`));
+    const allFiles = response.data.files || [];
+    
+    // FILTER: Hanya ambil file yang NAMANYA tidak diawali dengan label
+    const filteredFiles = allFiles.filter(file => {
+      // TypeScript Fix: Pastikan name ada
+      if (!file.name) return false;
 
-    return { success: true, data: response.data.files || [] };
+      const name = file.name.toUpperCase();
+      return !name.startsWith('MUMTAZ_') && 
+             !name.startsWith('JAYYID_') && 
+             !name.startsWith('MAQBUL_') && 
+             !name.startsWith('RASIB_');
+    });
+
+    return { success: true, data: filteredFiles };
   } catch (error: any) {
-    console.error('Drive API Error:', error.message);
     return { success: false, data: [], message: error.message };
   }
 }
 
 /**
- * Proses Labeling
+ * Proses Labeling: HANYA GANTI NAMA (RENAME)
  */
 export async function labelFileAction(formData: FormData) {
   const fileId = formData.get('fileId') as string;
-  const label = formData.get('label') as string;
+  const label = formData.get('label') as string; 
   const user = 'Zaid'; 
-
-  const folderIds: Record<string, string | undefined> = {
-    'mumtaz': process.env.ID_FOLDER_MUMTAZ?.trim(),
-    'jayyid_jiddan': process.env.ID_FOLDER_JAYYID_JIDDAN?.trim(),
-    'jayyid': process.env.ID_FOLDER_JAYYID?.trim(),
-    'maqbul': process.env.ID_FOLDER_MAQBUL?.trim(),
-    'rasib': process.env.ID_FOLDER_RASIB?.trim(),
-  };
+  const timestamp = new Date().getTime().toString().slice(-4);
 
   try {
-    // 1. Ambil metadata file
     const file = await drive.files.get({ 
       fileId, 
-      fields: 'id, name, parents',
+      fields: 'name',
       supportsAllDrives: true 
     });
     
-    const oldName = file.data.name;
-    const destFolderId = folderIds[label];
-    
-    // AMBIL ID FOLDER ALL DARI ENV SEBAGAI CADANGAN
-    const folderAllId = process.env.NEXT_PUBLIC_ID_FOLDER_ALL?.trim();
+    // TypeScript Fix: Pastikan oldName tidak null
+    const oldName = file.data.name || 'Untitled';
+    const formattedLabel = label.toUpperCase();
+    const newName = `${formattedLabel}_${user}_${timestamp}`;
 
-    // JIKA API tidak memberikan parents, gunakan folderAllId dari env
-    const currentParents = (file.data.parents && file.data.parents.length > 0) 
-      ? file.data.parents.join(',') 
-      : folderAllId;
-
-    if (!destFolderId) throw new Error(`Folder tujuan ${label} tidak ditemukan.`);
-    if (!currentParents) throw new Error("ID folder asal (ALL) tidak ditemukan di .env");
-
-    const newName = `01_${user}_${label}`;
-
-    // 2. EKSEKUSI MOVE (CUT & PASTE)
-    console.log(`Memindahkan ${oldName} dari ${currentParents} ke ${destFolderId}...`);
-    
     await drive.files.update({
       fileId: fileId,
-      addParents: destFolderId,      // Paste
-      removeParents: currentParents, // Cut
       supportsAllDrives: true,
-      requestBody: {
-        name: newName,               // Rename
-      },
+      requestBody: { name: newName },
     });
 
-    // 3. Catat ke Google Sheets
     const spreadsheetId = process.env.ID_SPREADSHEET_LOG?.trim();
     if (spreadsheetId) {
       await sheets.spreadsheets.values.append({
@@ -94,24 +73,85 @@ export async function labelFileAction(formData: FormData) {
         range: 'logs!A1',
         valueInputOption: 'USER_ENTERED',
         requestBody: {
-          values: [[new Date().toLocaleString('id-ID'), user, oldName, newName, label]],
+          values: [[new Date().toLocaleString('id-ID'), user, oldName, newName, formattedLabel]],
         },
       });
     }
 
     revalidatePath('/dashboard');
-    return { success: true, message: `Berhasil! File pindah ke ${label}` };
+    revalidatePath('/dashboard/history');
+    
+    return { success: true, message: `Berhasil! Nama baru: ${newName}` };
 
   } catch (error: any) {
-    console.error('Labeling Error:', error.message);
-    
-    // Kasus spesifik untuk Drive teman (Restriksi Move)
-    if (error.message.includes('parents')) {
-      return { 
-        success: false, 
-        message: "Gagal (Izin). Minta temanmu mencentang 'Editors can change permissions' di folder ALL." 
-      };
+    console.error('Rename Error:', error.message);
+    return { success: false, message: "Gagal ganti nama: " + error.message };
+  }
+}
+
+/**
+ * Mengambil Riwayat dari Google Sheets
+ */
+export async function fetchHistoryAction() {
+  try {
+    const spreadsheetId = process.env.ID_SPREADSHEET_LOG?.trim();
+    if (!spreadsheetId) throw new Error("ID_SPREADSHEET_LOG tidak ditemukan");
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'logs!A2:E', 
+    });
+
+    const rows = response.data.values || [];
+    const history = rows.map((row, index) => ({
+      id: `hist-${index}`,
+      timestamp: row[0] || '',
+      user: row[1] || '',
+      originalName: row[2] || '',
+      newName: row[3] || '',
+      label: row[4] || '',
+    })).reverse(); 
+
+    return { success: true, data: history };
+  } catch (error: any) {
+    return { success: false, data: [], message: error.message };
+  }
+}
+/**
+ * Membatalkan Label Terakhir (Undo)
+ */
+export async function undoLabelAction(formData: FormData) {
+  const fileId = formData.get('fileId') as string;
+  const originalName = formData.get('originalName') as string;
+
+  try {
+    // 1. Kembalikan nama file di Google Drive ke Nama Asli
+    await drive.files.update({
+      fileId: fileId,
+      supportsAllDrives: true,
+      requestBody: { name: originalName },
+    });
+
+    // 2. (Opsional) Kamu bisa hapus baris terakhir di Sheets secara manual, 
+    // tapi lebih aman tambahkan baris "UNDO" saja agar log tetap jujur.
+    const spreadsheetId = process.env.ID_SPREADSHEET_LOG?.trim();
+    if (spreadsheetId) {
+      await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: 'logs!A1',
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: [[new Date().toLocaleString('id-ID'), 'SYSTEM', originalName, 'RESTORED', 'UNDO']],
+        },
+      });
     }
-    return { success: false, message: "Gagal: " + error.message };
+
+    revalidatePath('/dashboard');
+    revalidatePath('/dashboard/history');
+    
+    return { success: true, message: "Berhasil dibatalkan!" };
+  } catch (error: any) {
+    console.error('Undo Error:', error.message);
+    return { success: false, message: "Gagal Undo: " + error.message };
   }
 }
