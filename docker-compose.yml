@@ -2,15 +2,15 @@ services:
   # Layanan Web App (Next.js)
   labelflow-web:
     build:
-      context: ./dataset-labeler
+      context: ./datasetLabeler  # Pastikan huruf besar/kecil sesuai dengan nama folder asli
       dockerfile: Dockerfile
     container_name: labelflow_app
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     environment:
       - NODE_ENV=production
-      # Contoh penambahan env untuk Google Drive jika diperlukan nanti
-      # - GOOGLE_SHEETS_ID=${GOOGLE_SHEETS_ID}
     restart: always
 
   # Layanan n8n

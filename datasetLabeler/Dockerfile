@@ -1,6 +1,6 @@
 # Tahap 1: Install Dependencies
 FROM node:18-alpine AS deps
-RUN apk add --no-cache libc6-compat
+RUN apk update && apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json package-lock.json ./
