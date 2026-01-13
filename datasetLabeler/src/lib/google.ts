@@ -37,9 +37,8 @@ export async function getUnlabeledFiles() {
  * Memperbarui data pengguna di Google Sheets berdasarkan Email
  */
 export async function updateUserInSheet(email: string, updatedData: { name?: string, role?: string }) {
-  // Menggunakan instance 'sheets' yang sudah didefinisikan di atas
   const spreadsheetId = process.env.ID_SPREADSHEET_LOG?.trim(); 
-  const range = 'users!A2:D'; // Mengambil data mulai dari baris 2 (melewati header)
+  const range = 'users!A2:D';
 
   try {
     const response = await sheets.spreadsheets.values.get({
@@ -49,19 +48,15 @@ export async function updateUserInSheet(email: string, updatedData: { name?: str
 
     const rows = response.data.values || [];
     
-    // Cari index baris berdasarkan email (Kolom A / indeks 0)
     const rowIndex = rows.findIndex(row => row[0]?.trim() === email.trim());
 
     if (rowIndex === -1) {
       throw new Error('User tidak ditemukan di spreadsheet');
     }
 
-    // Update data pada array lokal (indeks disesuaikan dengan range A2:D)
-    // Kolom C (indeks 2) = Role, Kolom D (indeks 3) = Name
     if (updatedData.role) rows[rowIndex][2] = updatedData.role.toUpperCase().trim();
     if (updatedData.name) rows[rowIndex][3] = updatedData.name.trim();
 
-    // Karena range dimulai dari A2, maka nomor baris asli di Sheets adalah rowIndex + 2
     const actualRowNumber = rowIndex + 2;
 
     await sheets.spreadsheets.values.update({

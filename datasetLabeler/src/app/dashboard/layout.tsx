@@ -1,14 +1,25 @@
-import Header from '@/components/layout/header';
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/layout/sidebar";
+import Header from "@/components/layout/header";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const session = await getServerSession(authOptions);
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header role="user" />
-      <main className="flex-grow">{children}</main>
-    </div>
+    <SidebarProvider>
+      <AppSidebar role={session?.user?.role} />
+      <SidebarInset>
+        <Header 
+          role={session?.user?.role} 
+          name={session?.user?.name ?? undefined} 
+          email={session?.user?.email ?? undefined} 
+        />
+        <main className="flex-1 p-6">
+          {children}
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

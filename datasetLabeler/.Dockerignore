@@ -1,9 +1,38 @@
+# Dependencies
+# Mencegah folder lokal yang berat ikut terkirim, 
+# Docker akan menginstal sendiri di dalam container
 node_modules
+/node_modules
+
+# Next.js Build Output
+# Mencegah sisa-sisa build lokal merusak build di dalam Docker
 .next
-out
-build
+/out
+/build
+
+# IDE & OS Files
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Version Control
 .git
+.gitignore
+.gitattributes
+
+# Environment & Logs
+# Menjaga keamanan agar rahasia lokal tidak bocor ke image Docker
+.env
+.env.local
+.env.production
 .env*.local
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore

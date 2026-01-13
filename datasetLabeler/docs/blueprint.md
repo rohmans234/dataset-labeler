@@ -1,4 +1,4 @@
-# **App Name**: LabelFlow
+# **App Name**: TalaqyLabeler
 
 ## Core Features:
 

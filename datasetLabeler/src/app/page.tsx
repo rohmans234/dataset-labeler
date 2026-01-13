@@ -8,7 +8,7 @@ export default function LandingPage() {
       <div className="text-center space-y-8">
         <div className="flex justify-center items-center gap-4">
           <Album className="h-16 w-16 text-primary" />
-          <h1 className="text-6xl font-bold font-headline">LabelFlow</h1>
+          <h1 className="text-6xl font-bold font-headline">Talaqy Labeler</h1>
         </div>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
           Streamline your audio labeling workflow. Efficient, collaborative, and integrated with your favorite tools.

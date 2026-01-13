@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { drive, sheets, updateUserInSheet } from './google';
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 /**
  * Mengambil daftar file dari folder ALL
@@ -21,7 +23,6 @@ export async function fetchFilesAction() {
 
     const allFiles = response.data.files || [];
 
-    // FILTER: Menyembunyikan file yang sudah memiliki prefix label
     const filteredFiles = allFiles.filter(file => {
       if (!file.name) return false;
       const name = file.name.toUpperCase();
@@ -40,66 +41,48 @@ export async function fetchFilesAction() {
  * Proses Labeling: Rename File, Validasi Feedback, & Catat Log
  */
 export async function labelFileAction(formData: FormData) {
-  const fileId = formData.get('fileId') as string;
-  const label = formData.get('label') as string; 
-  const feedback = formData.get('feedback') as string; // Ambil feedback
-  const user = 'Zaid';
-  const timestamp = new Date().getTime().toString().slice(-4);
-
-  // VALIDASI WAJIB FEEDBACK (Server Side)
-  if (!feedback || feedback.trim().length < 3) {
-    return { success: false, message: "Gagal: Feedback wajib diisi (minimal 3 karakter)." };
-  }
-
   try {
-    const file = await drive.files.get({ 
-      fileId, 
-      fields: 'name',
-      supportsAllDrives: true 
-    });
+
+    const session = await getServerSession(authOptions);
     
-    const oldName = file.data.name || 'Untitled';
-    const formattedLabel = label.toUpperCase();
-    const newName = `${formattedLabel}_${user}_${timestamp}`;
-
-    // 1. Rename File di Drive
-    await drive.files.update({
-      fileId: fileId,
-      supportsAllDrives: true,
-      requestBody: { name: newName },
-    });
-
-    // 2. Catat ke Sheets 
-    const spreadsheetId = process.env.ID_SPREADSHEET_LOG?.trim();
-    if (spreadsheetId) {
-      await sheets.spreadsheets.values.append({
-        spreadsheetId,
-        range: 'logs!A1',
-        valueInputOption: 'USER_ENTERED',
-        requestBody: {
-          // URUTAN KOLOM: Waktu, Pelabel, Nama Asli, Nama Baru, Label, Feedback, File ID
-          values: [[
-            new Date().toLocaleString('id-ID'), 
-            user, 
-            oldName, 
-            newName, 
-            formattedLabel,
-            feedback.trim(),
-            fileId
-          ]],
-        },
-      });
+    if (!session || !session.user) {
+      return { success: false, message: "Anda harus login terlebih dahulu." };
     }
 
-    // Refresh Cache Next.js
-    revalidatePath('/dashboard');
-    revalidatePath('/dashboard/history');
-    revalidatePath('/admin');
+    const fileId = formData.get('fileId') as string;
+    const label = formData.get('label') as string;
+    const feedback = formData.get('feedback') as string;
+    const userName = session.user.name || "Unknown User"; // Nama pelabel asli
 
-    return { success: true, message: `Berhasil! Nama baru: ${newName}` };
-  } catch (error: any) {
-    console.error('Labeling Error:', error.message);
-    return { success: false, message: "Gagal API: " + error.message };
+    // 2. Logika Nama Baru Dinamis
+    // Format: [NAMA_USER]_[LABEL]_[TIMESTAMP]
+    const timestampSuffix = Date.now();
+    const newFileName = `${userName.replace(/\s+/g, '_')}_${label}_${timestampSuffix}`;
+
+    const spreadsheetId = process.env.ID_SPREADSHEET_LOG?.trim();
+
+    // 3. Kirim ke Google Sheets
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'logs!A:G',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [[
+          new Date().toLocaleString('id-ID'), // A: Waktu
+          userName,                          // B: Pelabel (Dinamis)
+          fileId,                            // C: Original ID/Name
+          newFileName,                       // D: Nama Baru (Dinamis)
+          label,                             // E: Label
+          feedback,                          // F: Feedback
+          fileId                             // G: File ID
+        ]],
+      },
+    });
+
+    return { success: true, message: `Berhasil melabeli sebagai ${label}` };
+  } catch (error) {
+    console.error("Error labeling file:", error);
+    return { success: false, message: "Gagal menyimpan label ke sistem." };
   }
 }
 
@@ -113,7 +96,7 @@ export async function fetchHistoryAction() {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'logs!A2:G', // Diperluas ke G untuk mengambil feedback & fileId
+      range: 'logs!A2:G',
     });
 
     const rows = response.data.values || [];
@@ -188,7 +171,7 @@ export async function fetchAdminStats() {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'logs!A2:E', // Tetap sampai E karena statistik hanya butuh kolom Label
+      range: 'logs!A2:E',
     });
 
     const rows = (response.data.values || []).filter(row => row[4] !== 'UNDO');
@@ -278,12 +261,8 @@ export async function createUserAction(formData: FormData) {
  * Menghapus User (Admin Only)
  */
 export async function deleteUserAction(email: string) {
-  // Logika penghapusan di Google Sheets biasanya melibatkan pencarian row index 
-  // lalu mengirimkan batchUpdate deleteDimension.
-  // Untuk kemudahan starter, bisa menggunakan status 'Inactive'.
   try {
     const spreadsheetId = process.env.ID_SPREADSHEET_LOG?.trim();
-    // Cari row dan update kolom E (Status) menjadi 'Deleted'
     return { success: true, message: "User dinonaktifkan" };
   } catch (error: any) {
     return { success: false, message: error.message };
@@ -295,9 +274,36 @@ export async function updateUserAction(email: string, formData: FormData) {
 
   try {
     await updateUserInSheet(email, { name, role });
-    revalidatePath('/admin/users'); // Refresh data di halaman admin
+    revalidatePath('/admin/users');
     return { success: true };
   } catch (error) {
     return { success: false, error: 'Gagal memperbarui user' };
+  }
+}
+
+export async function fetchActivityChartData() {
+  try {
+    const spreadsheetId = process.env.ID_SPREADSHEET_LOG?.trim();
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'logs!A2:B',
+    });
+
+    const rows = response.data.values || [];
+    const chartMap: Record<string, any> = {};
+
+    rows.forEach(row => {
+      const datePart = row[0].split(',')[0];
+      const user = row[1];
+
+      if (!chartMap[datePart]) {
+        chartMap[datePart] = { date: datePart };
+      }
+      chartMap[datePart][user] = (chartMap[datePart][user] || 0) + 1;
+    });
+
+    return { success: true, data: Object.values(chartMap) };
+  } catch (error) {
+    return { success: false, data: [] };
   }
 }

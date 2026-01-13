@@ -48,15 +48,14 @@ export const authOptions: NextAuthOptions = {
             row[1]?.trim() === credentials.password?.trim()
           );
 
-          if (userRow) {
-            // 3. Pastikan ROLE dikirim dalam format UPPERCASE (ADMIN/USER)
-            // agar cocok dengan pengecekan di middleware.ts
-            return { 
-              id: userRow[0], 
-              email: userRow[0], 
-              role: userRow[2]?.toUpperCase().trim() || "USER",
-              name: userRow[3] || userRow[0].split('@')[0], 
-            };
+         if (userRow) {
+          return { 
+            id: userRow[0], 
+            email: userRow[0], 
+           
+            role: userRow[2]?.toUpperCase().trim() === 'ADMIN' ? 'ADMIN' : 'USER',
+            name: userRow[3] || userRow[0].split('@')[0], 
+          };
           }
           return null;
         } catch (error) {

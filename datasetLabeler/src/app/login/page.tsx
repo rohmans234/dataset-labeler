@@ -79,7 +79,7 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <div className='flex justify-center items-center gap-2 mb-4'>
             <Album className="h-8 w-8 text-primary" />
-            <CardTitle className="text-3xl font-headline text-primary">LabelFlow</CardTitle>
+            <CardTitle className="text-3xl font-headline text-primary">TalaqyLabeler</CardTitle>
           </div>
           <CardDescription>
             Masukkan email dan password akun Anda untuk mengakses dashboard.
@@ -93,7 +93,7 @@ export default function LoginPage() {
                 id="email"
                 name="email"
                 type="email"
-                placeholder="admin@labelflow.com"
+                placeholder="example@talaqy.com"
                 required
                 disabled={isLoading}
               />

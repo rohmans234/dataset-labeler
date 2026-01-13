@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from "@/components/providers/session-provider";
 
 export const metadata: Metadata = {
-  title: 'LabelFlow',
+  title: 'TalaqyLabeler',
   description: 'An audio labeling application integrated with Google Drive and Sheets.',
 };
 

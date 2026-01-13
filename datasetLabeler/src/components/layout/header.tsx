@@ -1,5 +1,8 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+import { signOut } from 'next-auth/react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,62 +13,63 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Album, LayoutDashboard, LogOut, User, ShieldCheck, UserPlus, History } from 'lucide-react';
+import { Album, LogOut, User } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 
 const userAvatar = PlaceHolderImages.find(p => p.id === 'user-avatar-1');
 const adminAvatar = PlaceHolderImages.find(p => p.id === 'admin-avatar-1');
 
 type HeaderProps = {
-  role?: 'admin' | 'user';
+  role?: string;
+  name?: string;
+  email?: string;
 }
 
-export default function Header({ role = 'user' }: HeaderProps) {
-  const isUser = role === 'user';
-  const name = isUser ? 'Zaid' : 'Admin';
-  const email = isUser ? 'zaid@example.com' : 'admin@example.com';
-  const avatar = isUser ? userAvatar : adminAvatar;
-  const fallback = isUser ? 'ZA' : 'AD';
+export default function Header({ role = 'USER', name, email }: HeaderProps) {
+  // 1. Inisialisasi state mounted untuk menangani Hydration
+  const [mounted, setMounted] = useState(false);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isAdmin = role === 'ADMIN';
+  const avatar = isAdmin ? adminAvatar : userAvatar;
+  const fallback = isAdmin ? 'AD' : 'US';
+
+  // 2. Render Placeholder selama proses hidrasi (Server-Side safe)
+  if (!mounted) {
+    return (
+      <header className="sticky top-0 z-50 w-full border-b bg-card shadow-sm">
+        <div className="container flex h-16 items-center px-4 md:px-6">
+          <div className="mr-2 md:mr-4 w-10 h-10" /> {/* Placeholder SidebarTrigger */}
+          <div className="flex items-center gap-2">
+            <Album className="h-6 w-6 text-primary shrink-0" />
+            <span className="font-bold text-base md:text-lg font-headline">TalaqyLabeler</span>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  // 3. Render asli setelah komponen terpasang (Mounted) di client
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-card shadow-sm">
+    <header className="sticky top-0 z-50 w-full border-b bg-card/80 backdrop-blur shadow-sm">
       <div className="container flex h-16 items-center px-4 md:px-6">
-        <Link href={isUser ? "/dashboard" : "/admin"} className="mr-6 flex items-center gap-2">
-          <Album className="h-6 w-6 text-primary" />
-          <span className="font-bold text-lg font-headline">LabelFlow</span>
+        <SidebarTrigger className="mr-2 md:mr-4" />
+        
+        <Link href={isAdmin ? "/admin" : "/dashboard"} className="mr-6 flex items-center gap-2">
+          <Album className="h-6 w-6 text-primary shrink-0" />
+          <span className="font-bold text-base md:text-lg font-headline truncate">TalaqyLabeler</span>
         </Link>
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-          {role === 'user' && (
-            <>
-              <Link
-                href="/dashboard"
-                className="text-foreground/70 transition-colors hover:text-foreground"
-              >
-                Dashboard
-              </Link>
-              <Link
-                href="/dashboard/history"
-                className="text-foreground/70 transition-colors hover:text-foreground"
-              >
-                History
-              </Link>
-            </>
-          )}
-          {role === 'admin' && (
-            <Link
-              href="/admin"
-              className="text-foreground/70 transition-colors hover:text-foreground"
-            >
-              Admin
-            </Link>
-          )}
-        </nav>
-        <div className="ml-auto flex items-center gap-4">
+
+        <div className="ml-auto flex items-center gap-2 md:gap-4">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                <Avatar className="h-10 w-10">
-                  {avatar && <AvatarImage src={avatar.imageUrl} alt="User Avatar" data-ai-hint={avatar.imageHint} />}
+              <Button variant="ghost" className="relative h-9 w-9 md:h-10 md:w-10 rounded-full">
+                <Avatar className="h-9 w-9 md:h-10 md:w-10 border border-primary/10">
+                  {avatar && <AvatarImage src={avatar.imageUrl} alt="User Avatar" />}
                   <AvatarFallback>{fallback}</AvatarFallback>
                 </Avatar>
               </Button>
@@ -73,51 +77,22 @@ export default function Header({ role = 'user' }: HeaderProps) {
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{name}</p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {email}
-                  </p>
+                  <p className="text-sm font-medium leading-none">{name || 'User'}</p>
+                  <p className="text-xs leading-none text-muted-foreground">{email}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {role === 'user' && (
-                <>
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard">
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
-                      <span>Dashboard</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard/history">
-                      <History className="mr-2 h-4 w-4" />
-                      <span>My History</span>
-                    </Link>
-                  </DropdownMenuItem>
-                </>
-              )}
-              {role === 'admin' && (
-                <>
-                  <DropdownMenuItem asChild>
-                     <Link href="/admin">
-                      <ShieldCheck className="mr-2 h-4 w-4" />
-                      <span>Admin Panel</span>
-                     </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                   <Link href="/admin/users">
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    <span>User Management</span>
-                   </Link>
-                  </DropdownMenuItem>
-                </>
-              )}
+              <DropdownMenuItem className="cursor-pointer">
+                <User className="mr-2 h-4 w-4" />
+                <span>Profil Saya</span>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/login">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
-                </Link>
+              <DropdownMenuItem 
+                className="text-destructive cursor-pointer" 
+                onClick={() => signOut({ callbackUrl: '/login' })}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
