@@ -89,7 +89,7 @@ export default function Header({ role = 'USER', name, email }: HeaderProps) {
               <DropdownMenuSeparator />
               <DropdownMenuItem 
                 className="text-destructive cursor-pointer" 
-                onClick={() => signOut({ callbackUrl: '/login' })}
+                onClick={() => signOut({ callbackUrl: '/' })}
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
