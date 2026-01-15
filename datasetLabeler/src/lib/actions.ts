@@ -305,14 +305,17 @@ export async function fetchActivityChartData() {
     const spreadsheetId = process.env.ID_SPREADSHEET_LOG?.trim();
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'logs!A2:B',
+      range: 'logs!A2:B', 
     });
 
     const rows = response.data.values || [];
     const chartMap: Record<string, any> = {};
 
     rows.forEach(row => {
-      const datePart = row[0].split(',')[0];
+      if (!row[0] || !row[1]) return;
+
+      
+      const datePart = row[0].split(/[ ,]+/)[0]; 
       const user = row[1];
 
       if (!chartMap[datePart]) {
@@ -321,8 +324,16 @@ export async function fetchActivityChartData() {
       chartMap[datePart][user] = (chartMap[datePart][user] || 0) + 1;
     });
 
-    return { success: true, data: Object.values(chartMap) };
-  } catch (error) {
+    return { 
+      success: true, 
+      data: Object.values(chartMap).sort((a: any, b: any) => {
+        
+        const parseDate = (d: string) => new Date(d.split('/').reverse().join('-')).getTime();
+        return parseDate(a.date) - parseDate(b.date);
+      })
+    };
+  } catch (error: any) {
+    console.error("Gagal sinkronisasi activity chart:", error.message);
     return { success: false, data: [] };
   }
 }

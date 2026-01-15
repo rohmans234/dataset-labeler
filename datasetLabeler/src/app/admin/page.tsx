@@ -1,7 +1,7 @@
 import { 
   fetchAdminStats, 
   fetchFilesAction, 
-  fetchActivityChartData // Tambahkan action ini
+  fetchActivityChartData
 } from "@/lib/actions";
 import StatsCards from "@/components/admin/stats-cards";
 import LabelDistributionChart from "@/components/admin/label-distribution-chart";
