@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useTransition, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation'; 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +16,7 @@ interface LabelingControlsProps {
 }
 
 export default function LabelingControls({ fileId, originalParent, onLabelSuccess }: LabelingControlsProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -48,7 +50,7 @@ export default function LabelingControls({ fileId, originalParent, onLabelSucces
 
   const toggleListening = () => {
     if (!recognitionRef.current) {
-      toast({ title: 'Tidak didukung', description: 'Browser Anda tidak mendukung fitur suara.', variant: 'destructive' });
+      toast({ title: 'Tidak didukung', description: 'Browser tidak mendukung fitur suara.', variant: 'destructive' });
       return;
     }
     if (isListening) {
@@ -79,6 +81,9 @@ export default function LabelingControls({ fileId, originalParent, onLabelSucces
       if (result.success) {
         toast({ title: 'Berhasil', description: result.message });
         setFeedback(''); 
+        
+        router.refresh(); 
+        
         onLabelSuccess(fileId, labelId, originalParent);
       } else {
         toast({ title: 'Gagal', description: result.message, variant: 'destructive' });
@@ -98,7 +103,7 @@ export default function LabelingControls({ fileId, originalParent, onLabelSucces
       if (!isNaN(key) && key >= 1 && key <= labels.length) {
         event.preventDefault();
         const label = labels[key - 1];
-        if (label && !isPending) {
+        if (label && !isPending && feedback.trim().length >= 3) {
           handleLabelClick(label.id);
         }
       }
@@ -110,19 +115,13 @@ export default function LabelingControls({ fileId, originalParent, onLabelSucces
 
   return (
     <div className="space-y-4 w-full max-w-full overflow-hidden">
-      {/* AREA TEXTAREA - RESPONSIVE HEIGHT */}
       <div className="relative group">
         <Textarea
           placeholder="Tulis feedback/catatan atau gunakan mic... (WAJIB)"
           value={feedback}
           onChange={(e) => setFeedback(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === ' ') {
-              e.stopPropagation();
-            }
-          }}
           className={`min-h-[120px] md:min-h-[100px] text-sm md:text-base transition-all pr-12 border-2 ${
-            !feedback.trim() ? 'border-amber-200 bg-amber-50/30' : 'bg-muted/30 focus:bg-background border-primary/20'
+            feedback.trim().length < 3 ? 'border-amber-200 bg-amber-50/30' : 'bg-muted/30 focus:bg-background border-primary/20'
           }`}
         />
         <Button
@@ -139,7 +138,6 @@ export default function LabelingControls({ fileId, originalParent, onLabelSucces
         </Button>
       </div>
 
-      {/* GRID TOMBOL LABEL - RESPONSIF (2 kolom mobile, 3 tablet, 5 desktop) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
         {labels.map((label, index) => (
           <Button
@@ -158,7 +156,6 @@ export default function LabelingControls({ fileId, originalParent, onLabelSucces
               <Loader2 className="h-4 w-4 md:h-5 md:w-5 animate-spin text-primary" />
             ) : (
               <div className="flex flex-col items-center justify-center gap-0.5">
-                {/* Indikator Shortcut - Sembunyikan di HP untuk hemat ruang */}
                 <span className="hidden sm:flex absolute top-1 left-1.5 h-4 w-4 md:h-5 md:w-5 text-[9px] md:text-[10px] items-center justify-center rounded-full bg-muted text-muted-foreground border">
                   {index + 1}
                 </span>
@@ -169,8 +166,7 @@ export default function LabelingControls({ fileId, originalParent, onLabelSucces
         ))}
       </div>
 
-      {/* HELPER TEXT - RESPONSIVE SIZE */}
-      {!feedback.trim() && (
+      {feedback.trim().length < 3 && (
         <p className="text-[11px] md:text-xs text-amber-600 font-medium italic animate-in fade-in slide-in-from-top-1">
           * Isi feedback minimal 3 karakter untuk mengaktifkan tombol label.
         </p>

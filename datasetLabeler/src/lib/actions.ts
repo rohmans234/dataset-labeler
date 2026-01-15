@@ -42,26 +42,33 @@ export async function fetchFilesAction() {
  */
 export async function labelFileAction(formData: FormData) {
   try {
-
+    // 1. Validasi Sesi User
     const session = await getServerSession(authOptions);
     
     if (!session || !session.user) {
       return { success: false, message: "Anda harus login terlebih dahulu." };
     }
 
+    // 2. Ekstraksi Data dari Form
     const fileId = formData.get('fileId') as string;
     const label = formData.get('label') as string;
     const feedback = formData.get('feedback') as string;
-    const userName = session.user.name || "Unknown User"; // Nama pelabel asli
+    const userName = session.user.name || "Unknown User";
 
-    // 2. Logika Nama Baru Dinamis
-    // Format: [NAMA_USER]_[LABEL]_[TIMESTAMP]
+    if (!fileId || !label || !feedback) {
+      return { success: false, message: "Data label atau feedback tidak lengkap." };
+    }
+
+    // 3. Logika Nama Baru & Spreadsheet ID
     const timestampSuffix = Date.now();
     const newFileName = `${userName.replace(/\s+/g, '_')}_${label}_${timestampSuffix}`;
-
     const spreadsheetId = process.env.ID_SPREADSHEET_LOG?.trim();
 
-    // 3. Kirim ke Google Sheets
+    if (!spreadsheetId) {
+      throw new Error("Konfigurasi ID_SPREADSHEET_LOG tidak ditemukan.");
+    }
+
+    // 4. Kirim Data ke Google Sheets
     await sheets.spreadsheets.values.append({
       spreadsheetId,
       range: 'logs!A:G',
@@ -69,9 +76,9 @@ export async function labelFileAction(formData: FormData) {
       requestBody: {
         values: [[
           new Date().toLocaleString('id-ID'), // A: Waktu
-          userName,                          // B: Pelabel (Dinamis)
+          userName,                          // B: Pelabel
           fileId,                            // C: Original ID/Name
-          newFileName,                       // D: Nama Baru (Dinamis)
+          newFileName,                       // D: Nama Baru
           label,                             // E: Label
           feedback,                          // F: Feedback
           fileId                             // G: File ID
@@ -79,10 +86,22 @@ export async function labelFileAction(formData: FormData) {
       },
     });
 
-    return { success: true, message: `Berhasil melabeli sebagai ${label}` };
-  } catch (error) {
+  
+    revalidatePath('/dashboard');
+    revalidatePath('/admin');
+
+    return { 
+      success: true, 
+      message: `Berhasil melabeli sebagai ${label}`,
+      newFileName 
+    };
+
+  } catch (error: any) {
     console.error("Error labeling file:", error);
-    return { success: false, message: "Gagal menyimpan label ke sistem." };
+    return { 
+      success: false, 
+      message: "Gagal menyimpan label: " + (error.message || "Masalah server.") 
+    };
   }
 }
 
