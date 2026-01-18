@@ -1,21 +1,18 @@
 import { 
   fetchAdminStats, 
-  fetchFilesAction, 
-  fetchActivityChartData
+  fetchFilesAction,
 } from "@/lib/actions";
 import StatsCards from "@/components/admin/stats-cards";
 import LabelDistributionChart from "@/components/admin/label-distribution-chart";
-import ActivityChart from "@/components/admin/activity-chart";
 
 export default async function AdminDashboard() {
-  // 1. Ambil semua data secara paralel untuk performa lebih cepat
-  const [statsResponse, filesResponse, chartResponse] = await Promise.all([
+  
+  const [statsResponse, filesResponse] = await Promise.all([
     fetchAdminStats(),
     fetchFilesAction(),
-    fetchActivityChartData()
   ]);
   
-  // 2. Error handling jika data utama gagal dimuat
+ 
   if (!statsResponse.success || !statsResponse.data) {
     return (
       <div className="p-8 text-red-500 font-medium">
@@ -26,10 +23,10 @@ export default async function AdminDashboard() {
 
   const { totalLabeled, distribution } = statsResponse.data;
   
-  // 3. Hitung jumlah file yang tersisa di folder "ALL" Google Drive
+
   const filesRemaining = filesResponse.data?.length || 0;
 
-  // 4. Transformasi data untuk komponen StatsCards
+
   const statsForCards = {
     totalLabeled: totalLabeled,
     filesRemaining: filesRemaining,
@@ -38,9 +35,6 @@ export default async function AdminDashboard() {
       count: d.value
     }))
   };
-
-  // 5. Pastikan data aktivitas tersedia (fallback ke array kosong jika gagal)
-  const activityData = chartResponse?.success ? chartResponse.data : [];
 
   return (
     <div className="flex flex-col gap-6 md:gap-8 p-4 md:p-0">
@@ -63,14 +57,6 @@ export default async function AdminDashboard() {
             Distribusi Label
           </h2>
           <LabelDistributionChart data={distribution} />
-        </div>
-        
-        <div className="col-span-full lg:col-span-3 bg-card p-4 rounded-xl border shadow-sm">
-          <h2 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
-            Aktivitas Pelabelan Harian
-          </h2>
-          {/* Kirim data hasil fetch ke ActivityChart agar dinamis */}
-          <ActivityChart data={activityData} />
         </div>
       </div>
     </div>
