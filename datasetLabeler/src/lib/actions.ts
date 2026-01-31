@@ -59,16 +59,38 @@ export async function labelFileAction(formData: FormData) {
       return { success: false, message: "Data label atau feedback tidak lengkap." };
     }
 
-    // 3. Logika Nama Baru & Spreadsheet ID
-    const timestampSuffix = Date.now();
-    const newFileName = `${userName.replace(/\s+/g, '_')}_${label}_${timestampSuffix}`;
-    const spreadsheetId = process.env.ID_SPREADSHEET_LOG?.trim();
+    // --- PERBAIKAN: Ambil Metadata File untuk mendapatkan ekstensi ---
+    const fileMetadata = await drive.files.get({
+      fileId: fileId,
+      fields: 'name',
+      supportsAllDrives: true,
+    });
+    const originalName = fileMetadata.data.name || "";
+    const extension = originalName.includes('.') ? originalName.split('.').pop() : "";
 
+    // 3. Logika Nama Baru
+    const timestampSuffix = Date.now();
+    const formattedName = userName.replace(/\s+/g, '_');
+    const newFileName = extension 
+      ? `${formattedName}_${label}_${timestampSuffix}.${extension}` 
+      : `${formattedName}_${label}_${timestampSuffix}`;
+
+    // --- FIX UTAMA: Update Nama di Google Drive ---
+    await drive.files.update({
+      fileId: fileId,
+      supportsAllDrives: true,
+      requestBody: {
+        name: newFileName,
+      },
+    });
+
+    // 4. Logika Spreadsheet ID
+    const spreadsheetId = process.env.ID_SPREADSHEET_LOG?.trim();
     if (!spreadsheetId) {
       throw new Error("Konfigurasi ID_SPREADSHEET_LOG tidak ditemukan.");
     }
 
-    // 4. Kirim Data ke Google Sheets
+    // 5. Kirim Data ke Google Sheets
     await sheets.spreadsheets.values.append({
       spreadsheetId,
       range: 'logs!A:G',
@@ -77,7 +99,7 @@ export async function labelFileAction(formData: FormData) {
         values: [[
           new Date().toLocaleString('id-ID'), // A: Waktu
           userName,                          // B: Pelabel
-          fileId,                            // C: Original ID/Name
+          originalName,                      // C: Nama Original (sebelum di-rename)
           newFileName,                       // D: Nama Baru
           label,                             // E: Label
           feedback,                          // F: Feedback
@@ -86,7 +108,6 @@ export async function labelFileAction(formData: FormData) {
       },
     });
 
-  
     revalidatePath('/dashboard');
     revalidatePath('/admin');
 

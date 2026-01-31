@@ -2,7 +2,7 @@ services:
   # Layanan Web App (Next.js)
   labelflow-web:
     build:
-      context: ./datasetLabeler  # Pastikan huruf besar/kecil sesuai dengan nama folder asli
+      context: ./datasetLabeler 
       dockerfile: Dockerfile
     container_name: labelflow_app
     ports:
