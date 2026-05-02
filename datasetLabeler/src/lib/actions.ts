@@ -245,6 +245,46 @@ export async function fetchAdminStats() {
 }
 
 /**
+ * Mengambil Top Labelers dari Google Sheets
+ */
+export async function fetchTopLabelers() {
+  try {
+    const spreadsheetId = process.env.ID_SPREADSHEET_LOG?.trim();
+    if (!spreadsheetId) throw new Error("ID_SPREADSHEET_LOG tidak ditemukan");
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'logs!A2:E',
+    });
+
+    const rows = (response.data.values || []).filter(row => row[4] !== 'UNDO');
+
+    // Hitung jumlah labeling per user (kolom B = userName)
+    const labelerCounts: Record<string, number> = {};
+
+    rows.forEach(row => {
+      const userName = row[1]; // Kolom B: Pelabel
+      if (userName && userName !== 'SYSTEM') {
+        labelerCounts[userName] = (labelerCounts[userName] || 0) + 1;
+      }
+    });
+
+    // Convert ke array dan sort berdasarkan count
+    const topLabelers = Object.entries(labelerCounts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10); // Ambil top 10
+
+    return {
+      success: true,
+      data: topLabelers
+    };
+  } catch (error: any) {
+    return { success: false, data: [], message: error.message };
+  }
+}
+
+/**
  * Mendapatkan semua user dari Google Sheets (Admin Only)
  */
 export async function fetchUsersAction() {

@@ -1,18 +1,19 @@
-import { 
-  fetchAdminStats, 
-  fetchFilesAction,
+import {
+  fetchAdminStats,
+  fetchTopLabelers,
 } from "@/lib/actions";
 import StatsCards from "@/components/admin/stats-cards";
 import LabelDistributionChart from "@/components/admin/label-distribution-chart";
+import TopLabelers from "@/components/admin/top-labelers";
 
 export default async function AdminDashboard() {
-  
-  const [statsResponse, filesResponse] = await Promise.all([
+
+  const [statsResponse, topLabelersResponse] = await Promise.all([
     fetchAdminStats(),
-    fetchFilesAction(),
+    fetchTopLabelers(),
   ]);
-  
- 
+
+
   if (!statsResponse.success || !statsResponse.data) {
     return (
       <div className="p-8 text-red-500 font-medium">
@@ -22,19 +23,26 @@ export default async function AdminDashboard() {
   }
 
   const { totalLabeled, distribution } = statsResponse.data;
-  
 
-  const filesRemaining = filesResponse.data?.length || 0;
+
+  // Total dataset target adalah 765 file
+  const totalDatasetTarget = 765;
+  const filesRemaining = totalDatasetTarget - totalLabeled;
 
 
   const statsForCards = {
     totalLabeled: totalLabeled,
     filesRemaining: filesRemaining,
+    totalDatasetTarget: totalDatasetTarget,
     labelCounts: distribution.map((d: any) => ({
       label: d.name,
       count: d.value
     }))
   };
+
+  const topLabelers = topLabelersResponse.success && topLabelersResponse.data
+    ? topLabelersResponse.data
+    : [];
 
   return (
     <div className="flex flex-col gap-6 md:gap-8 p-4 md:p-0">
@@ -57,6 +65,10 @@ export default async function AdminDashboard() {
             Distribusi Label
           </h2>
           <LabelDistributionChart data={distribution} />
+        </div>
+
+        <div className="col-span-full lg:col-span-3">
+          <TopLabelers labelers={topLabelers} />
         </div>
       </div>
     </div>

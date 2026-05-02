@@ -5,6 +5,7 @@ type StatsCardsProps = {
   stats: {
     totalLabeled: number;
     filesRemaining: number;
+    totalDatasetTarget: number;
     labelCounts: { label: string; count: number }[];
   };
 };
@@ -31,7 +32,7 @@ export default function StatsCards({ stats }: StatsCardsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{stats.filesRemaining.toLocaleString()}</div>
-          <p className="text-xs text-muted-foreground">in the "ALL" folder</p>
+          <p className="text-xs text-muted-foreground">of {stats.totalDatasetTarget.toLocaleString()} total dataset</p>
         </CardContent>
       </Card>
       <Card>
@@ -51,7 +52,7 @@ export default function StatsCards({ stats }: StatsCardsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {((stats.totalLabeled / (stats.totalLabeled + stats.filesRemaining)) * 100).toFixed(1)}%
+            {((stats.totalLabeled / stats.totalDatasetTarget) * 100).toFixed(1)}%
           </div>
           <p className="text-xs text-muted-foreground">of total dataset labeled</p>
         </CardContent>
